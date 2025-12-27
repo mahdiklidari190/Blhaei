@@ -2,9 +2,20 @@
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terminal Interface</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>به گایی های جوان های ایرانی</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        :root {
+            --matrix-green: #00ff00;
+            --matrix-dark-green: #00cc00;
+            --matrix-light-green: #33ff33;
+            --terminal-bg: #0a0a0a;
+            --terminal-border: #1a1a1a;
+            --glow-color: rgba(0, 255, 0, 0.3);
+            --scan-line: rgba(0, 255, 0, 0.05);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,125 +23,683 @@
         }
 
         body {
-            background-color: #0a0a0a;
-            color: #00ff00;
-            font-family: 'Courier New', 'Consolas', 'Monaco', monospace;
+            background-color: #000;
+            color: var(--matrix-green);
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
             font-size: 16px;
             line-height: 1.5;
             height: 100vh;
             overflow: hidden;
             display: flex;
             flex-direction: column;
+            position: relative;
+            text-shadow: 0 0 5px var(--matrix-green);
         }
 
+        /* Matrix rain effect background */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.1;
+            pointer-events: none;
+        }
+
+        /* Terminal header */
+        .terminal-header {
+            background: linear-gradient(to bottom, #111, #000);
+            padding: 12px 20px;
+            border-bottom: 2px solid var(--matrix-green);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 15px var(--glow-color);
+            position: relative;
+            z-index: 10;
+        }
+
+        .header-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--matrix-green);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .header-subtitle {
+            font-size: 0.9rem;
+            color: var(--matrix-dark-green);
+            font-family: 'Courier New', monospace;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            background-color: var(--matrix-green);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+            box-shadow: 0 0 10px var(--matrix-green);
+        }
+
+        .status-text {
+            font-size: 0.9rem;
+            color: var(--matrix-green);
+        }
+
+        /* Terminal container */
         .terminal-container {
             flex: 1;
             padding: 20px;
             overflow-y: auto;
             background: linear-gradient(to bottom, #0a0a0a, #000);
+            position: relative;
+            border: 1px solid var(--matrix-border);
+            margin: 10px;
+            border-radius: 5px;
+            box-shadow: 
+                0 0 20px var(--glow-color),
+                inset 0 0 20px rgba(0, 0, 0, 0.8);
         }
 
+        /* Scan lines effect */
+        .terminal-container::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                to bottom,
+                transparent 50%,
+                var(--scan-line) 51%
+            );
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 1;
+            opacity: 0.3;
+        }
+
+        /* Terminal content */
         .terminal-line {
             margin-bottom: 10px;
             white-space: pre-wrap;
             word-wrap: break-word;
             min-height: 24px;
             position: relative;
+            padding-left: 10px;
+            border-left: 2px solid transparent;
+            transition: border-left 0.3s;
         }
 
+        .terminal-line:hover {
+            border-left: 2px solid var(--matrix-green);
+        }
+
+        /* Cursor styles */
         .cursor {
             display: inline-block;
-            width: 8px;
-            height: 18px;
-            background-color: #00ff00;
+            width: 10px;
+            height: 20px;
+            background-color: var(--matrix-green);
             vertical-align: text-bottom;
-            margin-right: 2px;
-            animation: blink 1s infinite;
+            margin-right: 5px;
+            animation: blink 1s infinite, glow 2s infinite;
+            box-shadow: 0 0 10px var(--matrix-green);
         }
 
+        /* Typing effect */
+        .typing-effect {
+            border-right: 2px solid var(--matrix-green);
+            padding-right: 5px;
+            animation: typingGlow 1.5s infinite;
+        }
+
+        /* Text colors */
+        .prompt {
+            color: var(--matrix-green);
+            font-weight: bold;
+            text-shadow: 0 0 8px var(--matrix-green);
+        }
+
+        .user-input {
+            color: var(--matrix-light-green);
+            font-weight: bold;
+        }
+
+        .ai-response {
+            color: #00ccff;
+            text-shadow: 0 0 5px #00ccff;
+        }
+
+        .system-message {
+            color: #ffaa00;
+            text-shadow: 0 0 5px #ffaa00;
+        }
+
+        .error-message {
+            color: #ff5555;
+            text-shadow: 0 0 5px #ff5555;
+            animation: errorGlitch 0.5s;
+        }
+
+        .hacker-text {
+            color: #ff00ff;
+            animation: hackerGlitch 2s infinite;
+        }
+
+        /* Command input line */
+        .input-line {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 20, 0, 0.2);
+            padding: 8px;
+            border-radius: 3px;
+            border: 1px solid rgba(0, 255, 0, 0.2);
+            margin-top: 5px;
+            animation: inputGlow 3s infinite;
+        }
+
+        .input-text {
+            background: transparent;
+            border: none;
+            color: var(--matrix-green);
+            font-family: inherit;
+            font-size: inherit;
+            outline: none;
+            flex: 1;
+            caret-color: var(--matrix-green);
+            padding: 5px;
+            text-shadow: 0 0 5px var(--matrix-green);
+        }
+
+        /* Terminal footer */
+        .terminal-footer {
+            background: linear-gradient(to top, #111, #000);
+            padding: 10px 20px;
+            border-top: 2px solid var(--matrix-green);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--matrix-dark-green);
+            box-shadow: 0 0 10px var(--glow-color);
+        }
+
+        .footer-info {
+            display: flex;
+            gap: 15px;
+        }
+
+        .footer-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Animations */
         @keyframes blink {
             0%, 50% { opacity: 1; }
             51%, 100% { opacity: 0; }
         }
 
-        .prompt {
-            color: #00ff00;
-            font-weight: bold;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        .typing-effect {
-            border-right: 2px solid #00ff00;
-            padding-right: 5px;
+        @keyframes glow {
+            0%, 100% { box-shadow: 0 0 10px var(--matrix-green); }
+            50% { box-shadow: 0 0 20px var(--matrix-green); }
+        }
+
+        @keyframes typingGlow {
+            0%, 100% { border-right-color: var(--matrix-green); }
+            50% { border-right-color: transparent; }
+        }
+
+        @keyframes errorGlitch {
+            0% { transform: translateX(0); }
+            20% { transform: translateX(-2px); }
+            40% { transform: translateX(2px); }
+            60% { transform: translateX(-1px); }
+            80% { transform: translateX(1px); }
+            100% { transform: translateX(0); }
+        }
+
+        @keyframes hackerGlitch {
+            0% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+            10% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
+            20% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+            30% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
+            40% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+            100% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
+        }
+
+        @keyframes inputGlow {
+            0%, 100% { box-shadow: 0 0 5px rgba(0, 255, 0, 0.2); }
+            50% { box-shadow: 0 0 15px rgba(0, 255, 0, 0.4); }
         }
 
         /* Scrollbar styling */
         .terminal-container::-webkit-scrollbar {
-            width: 10px;
+            width: 12px;
         }
 
         .terminal-container::-webkit-scrollbar-track {
             background: #000;
+            border-radius: 10px;
         }
 
         .terminal-container::-webkit-scrollbar-thumb {
-            background: #00ff00;
-            border-radius: 5px;
+            background: var(--matrix-green);
+            border-radius: 10px;
+            box-shadow: 0 0 10px var(--matrix-green);
         }
 
         .terminal-container::-webkit-scrollbar-thumb:hover {
-            background: #00cc00;
+            background: var(--matrix-light-green);
         }
 
-        /* Hackerman effect */
-        .glitch {
-            animation: glitch 2s infinite;
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            body {
+                font-size: 14px;
+            }
+            
+            .terminal-header {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+            
+            .header-title {
+                font-size: 1rem;
+            }
+            
+            .header-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .connection-status {
+                align-self: flex-end;
+            }
+            
+            .terminal-container {
+                padding: 15px;
+                margin: 8px;
+            }
+            
+            .terminal-footer {
+                padding: 8px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .footer-info {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 10px;
+            }
+            
+            .input-line {
+                padding: 6px;
+            }
+            
+            .input-text {
+                font-size: 14px;
+                padding: 4px;
+            }
         }
 
-        @keyframes glitch {
-            0% { text-shadow: 0 0 #00ff00; }
-            20% { text-shadow: -2px 0 #ff00ff, 2px 0 #00ffff; }
-            40% { text-shadow: 2px 0 #ff00ff, -2px 0 #00ffff; }
-            60% { text-shadow: 0 0 #00ff00; }
-            80% { text-shadow: -1px 0 #ff00ff, 1px 0 #00ffff; }
-            100% { text-shadow: 0 0 #00ff00; }
+        @media (max-width: 480px) {
+            body {
+                font-size: 13px;
+            }
+            
+            .terminal-header {
+                padding: 8px 10px;
+            }
+            
+            .header-title {
+                font-size: 0.9rem;
+            }
+            
+            .terminal-container {
+                padding: 10px;
+                margin: 5px;
+            }
+            
+            .terminal-line {
+                margin-bottom: 8px;
+            }
+            
+            .cursor {
+                width: 8px;
+                height: 16px;
+            }
+        }
+
+        /* Desktop-specific enhancements */
+        @media (min-width: 1024px) {
+            .terminal-container {
+                margin: 20px;
+                padding: 25px;
+            }
+            
+            .terminal-header {
+                padding: 15px 30px;
+            }
+            
+            .header-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Keyboard shortcuts help */
+        .keyboard-help {
+            position: fixed;
+            bottom: 60px;
+            left: 20px;
+            background: rgba(0, 10, 0, 0.9);
+            border: 1px solid var(--matrix-green);
+            border-radius: 5px;
+            padding: 10px;
+            font-size: 0.8rem;
+            max-width: 300px;
+            z-index: 100;
+            display: none;
+            box-shadow: 0 0 15px var(--glow-color);
+        }
+
+        .keyboard-help.show {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        .help-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 20, 0, 0.8);
+            border: 1px solid var(--matrix-green);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 101;
+            box-shadow: 0 0 10px var(--glow-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--matrix-green);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body>
+    <!-- Matrix rain background -->
+    <canvas id="matrix-bg"></canvas>
+    
+    <!-- Terminal Header -->
+    <div class="terminal-header">
+        <div class="header-left">
+            <div class="header-title">
+                <i class="fas fa-terminal"></i> به گایی های جوان ایرانی 
+            </div>
+            <div class="header-subtitle">
+                تحلیل دقیق به گایی های جوان ایرانی با هوش مصنوعی 
+            </div>
+        </div>
+        <div class="connection-status">
+            <div class="status-indicator"></div>
+            <div class="status-text">به گا</div>
+        </div>
+    </div>
+    
+    <!-- Terminal Container -->
     <div class="terminal-container" id="terminal">
-        <!-- Lines will be added here dynamically -->
+        <!-- Terminal content will be added here -->
+    </div>
+    
+    <!-- Terminal Footer -->
+    <div class="terminal-footer">
+        <div class="footer-info">
+            <div class="footer-item">
+                <i class="fas fa-microchip"></i>
+                <span>درحال ارزیابی به گایی</span>
+            </div>
+            <div class="footer-item">
+                <i class="fas fa-shield-alt"></i>
+                <span>به گاه نسخه آلفا</span>
+            </div>
+            <div class="footer-item">
+                <i class="fas fa-bolt"></i>
+                <span>POWER: 100%</span>
+            </div>
+        </div>
+        <div class="footer-time">
+            <i class="far fa-clock"></i>
+            <span id="current-time">00:00:00</span>
+        </div>
+    </div>
+    
+    <!-- Keyboard Help -->
+    <div class="keyboard-help" id="keyboard-help">
+        <div style="color: var(--matrix-green); margin-bottom: 8px; font-weight: bold;">
+            <i class="fas fa-keyboard"></i> جوان ایرانی خوش امدی به شمارنده به گایی هات
+        </div>
+        <div>↑/↓ - به گایی هارو جا به جا کنید</div>
+        <div>Tab - روی به گایی بزنید</div>
+        <div>Ctrl+C - به گایی را ذخیره کنید</div>
+        <div>Ctrl+L - به گایی را پاک کنید</div>
+        <div>Ctrl+H - کمکی نمیشه کرد</div>
+    </div>
+    
+    <!-- Help Toggle Button -->
+    <div class="help-toggle" id="help-toggle">
+        <i class="fas fa-question"></i>
     </div>
 
     <script>
-        // CONFIGURATION - EDIT THESE LINES
+        // CONFIGURATION
         const LINES_TO_TYPE = [
-            "C:\\> درحال شمارش به گا رفتن جوان ایرانی ...",
-            "C:\\> شمارش به گایی خیلی زیاد هست صبور باشید ...",
-            "C:\\> جوان ایرانی تو خیلی به گا رفتی",
-            "C:\\> کیر تو زندگی تو جوان ایرانی تخمی ترین زندگی رو داری ",
-            "", // Empty line
-            "C:\\> // بیا کیر بخور جوان ایرانی ",
-            "C:\\> // کونت رو چرب کن هنوز اول راه هست جوان ایرانی😈",
+            "C:\\> در حال شمارش به گایی جوان های ایرانی...",
+            "C:\\> ارزیابی نرخ دلار...",
+            "C:\\> ازیابی نرخ بنزین...",
+            "C:\\> ارزیابی نرخ مسکن...",
+            "C:\\> ارزیابی کیر خر چرا شما انقدر ارزیابی دارید...",
+            "C:\\> به گایی زیاد هست سرور های ناسا به گا رفت!!!",
+            "C:\\> جوان ایرانی من ریدم تو زندگیت🤬",
+            "C:\\> سرور دوباره به کار افتاد اتصال جوان ایرانی به هوش مصنوعی...",
+            "",
+            "C:\\> هوش مصنوعی برای به گایی های جوان ایرانی:",
+            "C:\\>   - AI MODEL: گا شمار جوان ایرانی مدل آلفا",
+            "C:\\>   - ENCRYPTION: AES-256 (ACTIVE)",
+            "C:\\>   - BANDWIDTH: 1.2 Gbps پرامت گا",
+            "C:\\>   - LATENCY: 12ms گا در ثانیه",
+            "",
+            "C:\\> TYPE 'help' FOR AVAILABLE COMMANDS",
+            "C:\\> TYPE 'ai [YOUR MESSAGE]' TO CHAT WITH AI",
             ""
         ];
         
-        const TYPING_SPEED = 50; // milliseconds per character
-        const LINE_DELAY = 500; // milliseconds between lines
-
+        const TYPING_SPEED = 30; // milliseconds per character
+        const LINE_DELAY = 300; // milliseconds between lines
+        
+        // Cohere API Configuration
+        const COHERE_API_KEY = "qX7sKhEWrDcAw0PZVs6zmjMQry3oTXDqxL39jT3O";
+        const COHERE_API_URL = "https://api.cohere.ai/v1/generate";
+        
+        // State management
         const terminal = document.getElementById('terminal');
         let currentLineIndex = 0;
-
+        let isTypingAnimation = true;
+        let inputElement = null;
+        let commandHistory = [];
+        let historyIndex = -1;
+        let currentInput = "";
+        
+        // Initialize terminal
+        function initTerminal() {
+            // Start matrix background
+            initMatrixBackground();
+            
+            // Start typing animation
+            typeLine(LINES_TO_TYPE[0], 0);
+            
+            // Start clock
+            updateClock();
+            setInterval(updateClock, 1000);
+            
+            // Setup keyboard shortcuts
+            setupKeyboardShortcuts();
+            
+            // Setup help toggle
+            document.getElementById('help-toggle').addEventListener('click', toggleHelp);
+        }
+        
+        // Matrix rain background
+        function initMatrixBackground() {
+            const canvas = document.getElementById('matrix-bg');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas dimensions
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            
+            // Matrix characters
+            const chars = "01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン";
+            const charArray = chars.split("");
+            const fontSize = 14;
+            const columns = canvas.width / fontSize;
+            const drops = [];
+            
+            // Initialize drops
+            for (let i = 0; i < columns; i++) {
+                drops[i] = Math.floor(Math.random() * canvas.height / fontSize);
+            }
+            
+            // Draw function
+            function draw() {
+                // Semi-transparent black background for trail effect
+                ctx.fillStyle = "rgba(0, 0, 0, 0.05)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.font = `${fontSize}px monospace`;
+                
+                // Draw characters
+                for (let i = 0; i < drops.length; i++) {
+                    // Random character
+                    const char = charArray[Math.floor(Math.random() * charArray.length)];
+                    
+                    // Green with varying intensity
+                    const intensity = Math.random() * 0.5 + 0.5;
+                    ctx.fillStyle = `rgba(0, 255, 0, ${intensity})`;
+                    
+                    // Draw character
+                    ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+                    
+                    // Move drop down
+                    drops[i]++;
+                    
+                    // Reset drop if it goes beyond canvas or randomly
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                }
+            }
+            
+            // Animation loop
+            setInterval(draw, 50);
+            
+            // Resize handler
+            window.addEventListener('resize', function() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            });
+        }
+        
+        // Update clock in footer
+        function updateClock() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fa-IR');
+            document.getElementById('current-time').textContent = timeString;
+        }
+        
+        // Setup keyboard shortcuts
+        function setupKeyboardShortcuts() {
+            document.addEventListener('keydown', function(e) {
+                // Ctrl+L to clear terminal
+                if (e.ctrlKey && e.key === 'l') {
+                    e.preventDefault();
+                    clearTerminal();
+                }
+                
+                // Ctrl+H to toggle help
+                if (e.ctrlKey && e.key === 'h') {
+                    e.preventDefault();
+                    toggleHelp();
+                }
+                
+                // Ctrl+C to cancel
+                if (e.ctrlKey && e.key === 'c') {
+                    e.preventDefault();
+                    if (isTypingAnimation) {
+                        skipAnimation();
+                    }
+                    displaySystemMessage('OPERATION CANCELLED');
+                    enableInput();
+                }
+            });
+        }
+        
+        // Toggle help panel
+        function toggleHelp() {
+            const helpPanel = document.getElementById('keyboard-help');
+            helpPanel.classList.toggle('show');
+        }
+        
+        // Type a line with animation
         function typeLine(lineText, lineIndex) {
             const lineElement = document.createElement('div');
             lineElement.className = 'terminal-line';
             
-            // Add prompt for lines that start with C:\\>
             if (lineText.startsWith('C:\\>')) {
                 const prompt = document.createElement('span');
                 prompt.className = 'prompt';
                 prompt.textContent = 'C:\\>';
                 lineElement.appendChild(prompt);
-                lineText = lineText.substring(5); // Remove C:\\> from text to type
+                lineText = lineText.substring(5);
             }
             
             const typingSpan = document.createElement('span');
@@ -143,21 +712,27 @@
             let charIndex = 0;
             const typeChar = () => {
                 if (charIndex < lineText.length) {
+                    // Add random glitch effect occasionally
+                    if (Math.random() < 0.02) {
+                        typingSpan.classList.add('hacker-text');
+                        setTimeout(() => {
+                            typingSpan.classList.remove('hacker-text');
+                        }, 100);
+                    }
+                    
                     typingSpan.textContent += lineText[charIndex];
                     charIndex++;
                     setTimeout(typeChar, TYPING_SPEED);
                 } else {
-                    // Remove cursor effect when line is complete
                     typingSpan.classList.remove('typing-effect');
                     
-                    // Move to next line after delay
                     setTimeout(() => {
                         currentLineIndex++;
                         if (currentLineIndex < LINES_TO_TYPE.length) {
                             typeLine(LINES_TO_TYPE[currentLineIndex], currentLineIndex);
                         } else {
-                            // Add final prompt
-                            addFinalPrompt();
+                            isTypingAnimation = false;
+                            addCommandPrompt();
                         }
                     }, LINE_DELAY);
                 }
@@ -165,32 +740,519 @@
 
             typeChar();
         }
-
-        function addFinalPrompt() {
+        
+        // Skip typing animation
+        function skipAnimation() {
+            isTypingAnimation = false;
+            const typingSpans = document.querySelectorAll('.typing-effect');
+            typingSpans.forEach(span => {
+                const parent = span.parentElement;
+                const text = span.textContent;
+                span.classList.remove('typing-effect');
+                
+                // If there's a prompt before it
+                const prompt = parent.querySelector('.prompt');
+                if (prompt) {
+                    parent.innerHTML = '';
+                    parent.appendChild(prompt);
+                    parent.appendChild(document.createTextNode(text));
+                }
+            });
+        }
+        
+        // Add command prompt line
+        function addCommandPrompt() {
             const promptLine = document.createElement('div');
-            promptLine.className = 'terminal-line';
-            promptLine.innerHTML = '<span class="prompt">C:\\></span><span class="cursor"></span>';
+            promptLine.className = 'terminal-line input-line';
+            promptLine.id = 'input-line';
+            
+            const promptSpan = document.createElement('span');
+            promptSpan.className = 'prompt';
+            promptSpan.textContent = 'C:\\>';
+            
+            const inputSpan = document.createElement('input');
+            inputSpan.className = 'input-text';
+            inputSpan.type = 'text';
+            inputSpan.id = 'command-input';
+            inputSpan.autocomplete = 'off';
+            inputSpan.placeholder = 'Type command here...';
+            
+            promptLine.appendChild(promptSpan);
+            promptLine.appendChild(inputSpan);
             terminal.appendChild(promptLine);
+            
+            inputElement = inputSpan;
+            inputElement.focus();
+            
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            // Add event listeners
+            inputElement.addEventListener('keydown', handleKeyDown);
+            inputElement.addEventListener('input', handleInput);
+        }
+        
+        // Handle keyboard input
+        function handleKeyDown(event) {
+            if (isTypingAnimation) return;
+            
+            switch(event.key) {
+                case 'Enter':
+                    event.preventDefault();
+                    processCommand(inputElement.value);
+                    break;
+                    
+                case 'ArrowUp':
+                    event.preventDefault();
+                    navigateHistory(-1);
+                    break;
+                    
+                case 'ArrowDown':
+                    event.preventDefault();
+                    navigateHistory(1);
+                    break;
+                    
+                case 'Tab':
+                    event.preventDefault();
+                    autoComplete();
+                    break;
+            }
+        }
+        
+        // Handle input
+        function handleInput(event) {
+            currentInput = inputElement.value;
+        }
+        
+        // Navigate command history
+        function navigateHistory(direction) {
+            if (commandHistory.length === 0) return;
+            
+            historyIndex += direction;
+            
+            if (historyIndex < 0) {
+                historyIndex = -1;
+                inputElement.value = currentInput;
+                return;
+            }
+            
+            if (historyIndex >= commandHistory.length) {
+                historyIndex = commandHistory.length - 1;
+            }
+            
+            if (historyIndex >= 0) {
+                inputElement.value = commandHistory[historyIndex];
+            }
+        }
+        
+        // Simple auto-complete
+        function autoComplete() {
+            const commands = ['help', 'clear', 'ai', 'history', 'time', 'status'];
+            const input = inputElement.value.toLowerCase();
+            
+            if (!input) return;
+            
+            const match = commands.find(cmd => cmd.startsWith(input));
+            if (match) {
+                inputElement.value = match;
+            }
+        }
+        
+        // Process command
+        async function processCommand(command) {
+            if (!command.trim()) return;
+            
+            // Save to history
+            commandHistory.unshift(command);
+            historyIndex = -1;
+            currentInput = "";
+            
+            // Display user command
+            displayUserCommand(command);
+            
+            // Clear input field
+            inputElement.value = '';
+            inputElement.disabled = true;
+            
+            // Process commands
+            const cmd = command.toLowerCase().split(' ')[0];
+            
+            switch(cmd) {
+                case 'help':
+                    displayHelp();
+                    enableInput();
+                    break;
+                    
+                case 'clear':
+                    clearTerminal();
+                    enableInput();
+                    break;
+                    
+                case 'history':
+                    displayHistory();
+                    enableInput();
+                    break;
+                    
+                case 'time':
+                    displayTime();
+                    enableInput();
+                    break;
+                    
+                case 'status':
+                    displaySystemStatus();
+                    enableInput();
+                    break;
+                    
+                case 'ai':
+                    const aiPrompt = command.substring(3).trim();
+                    if (aiPrompt) {
+                        await sendToAI(aiPrompt);
+                    } else {
+                        displayErrorMessage('PLEASE PROVIDE A MESSAGE FOR AI');
+                        enableInput();
+                    }
+                    break;
+                    
+                default:
+                    // Try to send to AI
+                    await sendToAI(command);
+                    break;
+            }
+        }
+        
+        // Display user command
+        function displayUserCommand(command) {
+            const lineElement = document.createElement('div');
+            lineElement.className = 'terminal-line';
+            
+            const prompt = document.createElement('span');
+            prompt.className = 'prompt';
+            prompt.textContent = 'C:\\>';
+            
+            const commandSpan = document.createElement('span');
+            commandSpan.className = 'user-input';
+            commandSpan.textContent = ' ' + command;
+            
+            lineElement.appendChild(prompt);
+            lineElement.appendChild(commandSpan);
+            terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            
             terminal.scrollTop = terminal.scrollHeight;
         }
-
-        // Start typing animation on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            typeLine(LINES_TO_TYPE[0], 0);
-        });
-
-        // Optional: Add interactive command prompt (uncomment to enable)
-        /*
-        document.addEventListener('keydown', (e) => {
-            if (currentLineIndex >= LINES_TO_TYPE.length) {
-                // Only accept input after animation is complete
-                if (e.key === 'Enter') {
-                    // Add your command processing logic here
-                    console.log('Command entered');
-                }
+        
+        // Display AI response
+        function displayAIResponse(response) {
+            const lineElement = document.createElement('div');
+            lineElement.className = 'terminal-line';
+            
+            const prompt = document.createElement('span');
+            prompt.className = 'prompt';
+            prompt.textContent = 'AI\\>';
+            
+            const responseSpan = document.createElement('span');
+            responseSpan.className = 'ai-response';
+            responseSpan.textContent = ' ' + response;
+            
+            lineElement.appendChild(prompt);
+            lineElement.appendChild(responseSpan);
+            terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Display system message
+        function displaySystemMessage(message) {
+            const lineElement = document.createElement('div');
+            lineElement.className = 'terminal-line';
+            
+            const prompt = document.createElement('span');
+            prompt.className = 'prompt';
+            prompt.textContent = 'SYS\\>';
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.className = 'system-message';
+            messageSpan.textContent = ' ' + message;
+            
+            lineElement.appendChild(prompt);
+            lineElement.appendChild(messageSpan);
+            terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Display error message
+        function displayErrorMessage(message) {
+            const lineElement = document.createElement('div');
+            lineElement.className = 'terminal-line';
+            
+            const prompt = document.createElement('span');
+            prompt.className = 'prompt';
+            prompt.textContent = 'ERR\\>';
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.className = 'error-message';
+            messageSpan.textContent = ' ' + message;
+            
+            lineElement.appendChild(prompt);
+            lineElement.appendChild(messageSpan);
+            terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Display help
+        function displayHelp() {
+            const helpLines = [
+                "AVAILABLE COMMANDS:",
+                "  help          - Show this help message",
+                "  clear         - Clear terminal screen",
+                "  history       - Show command history",
+                "  time          - Show current time",
+                "  status        - Show system status",
+                "  ai [message]  - Chat with AI",
+                "  [message]     - Send message to AI (shortcut)",
+                "",
+                "KEYBOARD SHORTCUTS:",
+                "  ↑/↓          - Command history navigation",
+                "  Tab          - Auto-complete",
+                "  Ctrl+C       - Cancel operation",
+                "  Ctrl+L       - Clear terminal",
+                "  Ctrl+H       - Show/hide help panel"
+            ];
+            
+            helpLines.forEach(line => {
+                const lineElement = document.createElement('div');
+                lineElement.className = 'terminal-line';
+                
+                const prompt = document.createElement('span');
+                prompt.className = 'prompt';
+                prompt.textContent = 'HELP\\>';
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'system-message';
+                textSpan.textContent = ' ' + line;
+                
+                lineElement.appendChild(prompt);
+                lineElement.appendChild(textSpan);
+                terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            });
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Display command history
+        function displayHistory() {
+            if (commandHistory.length === 0) {
+                displaySystemMessage('NO COMMAND HISTORY');
+                return;
             }
-        });
-        */
+            
+            displaySystemMessage('COMMAND HISTORY:');
+            
+            commandHistory.slice(0, 10).forEach((cmd, index) => {
+                const lineElement = document.createElement('div');
+                lineElement.className = 'terminal-line';
+                
+                const prompt = document.createElement('span');
+                prompt.className = 'prompt';
+                prompt.textContent = `${index + 1}\\>`;
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'system-message';
+                textSpan.textContent = ' ' + cmd;
+                
+                lineElement.appendChild(prompt);
+                lineElement.appendChild(textSpan);
+                terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            });
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Display current time
+        function displayTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('fa-IR');
+            const dateString = now.toLocaleDateString('fa-IR');
+            
+            const lineElement = document.createElement('div');
+            lineElement.className = 'terminal-line';
+            
+            const prompt = document.createElement('span');
+            prompt.className = 'prompt';
+            prompt.textContent = 'TIME\\>';
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'system-message';
+            textSpan.textContent = ` ${dateString} - ${timeString}`;
+            
+            lineElement.appendChild(prompt);
+            lineElement.appendChild(textSpan);
+            terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Display system status
+        function displaySystemStatus() {
+            const statusLines = [
+                "SYSTEM STATUS:",
+                "  AI CONNECTION: ACTIVE",
+                "  ENCRYPTION: AES-256 (ENABLED)",
+                "  LATENCY: 12ms",
+                "  UPTIME: 24h 17m",
+                "  MEMORY USAGE: 42%",
+                "  API STATUS: OPERATIONAL"
+            ];
+            
+            statusLines.forEach(line => {
+                const lineElement = document.createElement('div');
+                lineElement.className = 'terminal-line';
+                
+                const prompt = document.createElement('span');
+                prompt.className = 'prompt';
+                prompt.textContent = 'STATUS\\>';
+                
+                const textSpan = document.createElement('span');
+                textSpan.className = 'system-message';
+                textSpan.textContent = ' ' + line;
+                
+                lineElement.appendChild(prompt);
+                lineElement.appendChild(textSpan);
+                terminal.insertBefore(lineElement, document.getElementById('input-line'));
+            });
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Clear terminal
+        function clearTerminal() {
+            const terminal = document.getElementById('terminal');
+            const inputLine = document.getElementById('input-line');
+            
+            // Remove all lines except the input line
+            while (terminal.firstChild) {
+                terminal.removeChild(terminal.firstChild);
+            }
+            
+            // Add a new empty terminal with just the input line
+            terminal.appendChild(inputLine);
+            terminal.scrollTop = terminal.scrollHeight;
+            
+            // Add a system message
+            const lineElement = document.createElement('div');
+            lineElement.className = 'terminal-line';
+            
+            const prompt = document.createElement('span');
+            prompt.className = 'prompt';
+            prompt.textContent = 'SYS\\>';
+            
+            const textSpan = document.createElement('span');
+            textSpan.className = 'system-message';
+            textSpan.textContent = ' TERMINAL CLEARED';
+            
+            lineElement.appendChild(prompt);
+            lineElement.appendChild(textSpan);
+            terminal.insertBefore(lineElement, inputLine);
+            
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        // Enable input
+        function enableInput() {
+            inputElement.disabled = false;
+            inputElement.focus();
+        }
+        
+        // Send prompt to AI
+        async function sendToAI(prompt) {
+            displaySystemMessage('QUERYING AI...');
+            
+            // Show loading animation
+            const loadingElement = document.createElement('div');
+            loadingElement.className = 'loading';
+            
+            const lastSystemLine = document.querySelector('.terminal-line:last-child .prompt');
+            if (lastSystemLine && lastSystemLine.textContent === 'SYS\\>') {
+                lastSystemLine.parentElement.appendChild(loadingElement);
+            }
+            
+            try {
+                const response = await fetch(COHERE_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${COHERE_API_KEY}`
+                    },
+                    body: JSON.stringify({
+                        model: "command",
+                        prompt: prompt,
+                        max_tokens: 500,
+                        temperature: 0.7,
+                        k: 0,
+                        stop_sequences: [],
+                        return_likelihoods: 'NONE'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API ERROR: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Remove loading animation
+                loadingElement.remove();
+                
+                // Remove the "querying" message
+                const terminalLines = document.querySelectorAll('.terminal-line');
+                const lastLine = terminalLines[terminalLines.length - 2];
+                if (lastLine && lastLine.querySelector('.prompt') && 
+                    lastLine.textContent.includes('QUERYING AI')) {
+                    lastLine.remove();
+                }
+                
+                // Display AI response
+                if (data.generations && data.generations.length > 0) {
+                    displayAIResponse(data.generations[0].text.trim());
+                } else {
+                    throw new Error('INVALID RESPONSE FROM API');
+                }
+                
+            } catch (error) {
+                console.error('AI CONNECTION ERROR:', error);
+                
+                // Remove loading animation
+                loadingElement.remove();
+                
+                // Remove the "querying" message
+                const terminalLines = document.querySelectorAll('.terminal-line');
+                const lastLine = terminalLines[terminalLines.length - 2];
+                if (lastLine && lastLine.querySelector('.prompt') && 
+                    lastLine.textContent.includes('QUERYING AI')) {
+                    lastLine.remove();
+                }
+                
+                // Fallback response if API fails
+                const fallbackResponses = [
+                    "I'm currently experiencing connection issues. Please try again.",
+                    "System temporarily unavailable. Please check your connection.",
+                    "Unable to reach AI server at this time.",
+                    "Connection timeout. Please verify your API credentials."
+                ];
+                
+                const randomResponse = fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+                displayAIResponse(randomResponse);
+                
+                // Also show error message
+                displayErrorMessage(`NETWORK ERROR: ${error.message}`);
+            } finally {
+                enableInput();
+            }
+        }
+
+        // Start terminal on page load
+        window.addEventListener('DOMContentLoaded', initTerminal);
     </script>
 </body>
 </html>
